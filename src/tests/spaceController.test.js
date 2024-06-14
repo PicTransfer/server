@@ -5,7 +5,7 @@ const app = require("../index");
 const User = require("../models/User");
 const Space = require("../models/Space");
 
-process.env.MONGO_URI = "mongodb://your_test_mongo_uri";
+process.env.MONGO_URI = "mongodb://localhost:27017/your_test_db"; // Utilisez une URI MongoDB valide
 process.env.JWT_SECRET = "your_jwt_secret_key";
 process.env.EMAIL_USER = "your_email@example.com";
 process.env.EMAIL_PASS = "your_email_password";
