@@ -7,7 +7,7 @@ exports.createSpace = async (req, res) => {
     const space = new Space({
       name,
       owner: req.user.id,
-      members: [req.user.id],
+      members: [{ user: req.user.id, role: "owner" }],
     });
     await space.save();
     res.status(201).send(space);
@@ -18,17 +18,51 @@ exports.createSpace = async (req, res) => {
 
 exports.addMember = async (req, res) => {
   try {
-    const { spaceId, userId } = req.body;
+    const { spaceId, userId, role } = req.body;
     const space = await Space.findById(spaceId);
     if (!space) {
       return res.status(404).send({ message: "Space not found" });
     }
-    if (space.owner.toString() !== req.user.id) {
+    const owner = space.members.find(
+      (member) =>
+        member.user.toString() === req.user.id && member.role === "owner"
+    );
+    if (!owner) {
       return res
         .status(403)
         .send({ message: "Only the owner can add members" });
     }
-    space.members.push(userId);
+    space.members.push({ user: userId, role: role || "member" });
+    await space.save();
+    res.send(space);
+  } catch (err) {
+    res.status(400).send({ error: err.message });
+  }
+};
+
+exports.updateRole = async (req, res) => {
+  try {
+    const { spaceId, userId, role } = req.body;
+    const space = await Space.findById(spaceId);
+    if (!space) {
+      return res.status(404).send({ message: "Space not found" });
+    }
+    const owner = space.members.find(
+      (member) =>
+        member.user.toString() === req.user.id && member.role === "owner"
+    );
+    if (!owner) {
+      return res
+        .status(403)
+        .send({ message: "Only the owner can update roles" });
+    }
+    const member = space.members.find(
+      (member) => member.user.toString() === userId
+    );
+    if (!member) {
+      return res.status(404).send({ message: "Member not found" });
+    }
+    member.role = role;
     await space.save();
     res.send(space);
   } catch (err) {
@@ -43,7 +77,10 @@ exports.uploadFile = async (req, res) => {
     if (!space) {
       return res.status(404).send({ message: "Space not found" });
     }
-    if (!space.members.includes(req.user.id)) {
+    const member = space.members.find(
+      (member) => member.user.toString() === req.user.id
+    );
+    if (!member) {
       return res.status(403).send({ message: "Only members can upload files" });
     }
     space.files.push(req.file.path);
@@ -61,7 +98,10 @@ exports.getFiles = async (req, res) => {
     if (!space) {
       return res.status(404).send({ message: "Space not found" });
     }
-    if (!space.members.includes(req.user.id)) {
+    const member = space.members.find(
+      (member) => member.user.toString() === req.user.id
+    );
+    if (!member) {
       return res.status(403).send({ message: "Only members can view files" });
     }
     res.send(space.files);
